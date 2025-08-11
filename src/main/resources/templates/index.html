@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>SAML Framework Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SAML Framework Test Interface</h1>
+        
+        <div class="section">
+            <h2>Authentication</h2>
+            <div class="form-group">
+                <label for="relayState">Relay State (optional):</label>
+                <input type="text" id="relayState" placeholder="Enter relay state">
+            </div>
+            <button onclick="initiateSSO()">Initiate SAML SSO</button>
+            <div id="authResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>SAML Response Processing</h2>
+            <div class="form-group">
+                <label for="samlResponse">SAML Response (Base64 encoded):</label>
+                <textarea id="samlResponse" rows="5" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="Paste SAML Response here"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="responseRelayState">Relay State (optional):</label>
+                <input type="text" id="responseRelayState" placeholder="Enter relay state">
+            </div>
+            <button onclick="processSAMLResponse()">Process SAML Response</button>
+            <div id="responseResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Logout</h2>
+            <div class="form-group">
+                <label for="nameId">Name ID:</label>
+                <input type="text" id="nameId" placeholder="Enter Name ID">
+            </div>
+            <div class="form-group">
+                <label for="sessionIndex">Session Index (optional):</label>
+                <input type="text" id="sessionIndex" placeholder="Enter session index">
+            </div>
+            <div class="form-group">
+                <label for="logoutRelayState">Relay State (optional):</label>
+                <input type="text" id="logoutRelayState" placeholder="Enter relay state">
+            </div>
+            <button onclick="initiateLogout()">Initiate SAML Logout</button>
+            <div id="logoutResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Metadata</h2>
+            <button onclick="getMetadata()">Get SAML Metadata</button>
+            <div id="metadataResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        function showResult(elementId, message, isSuccess) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'result ' + (isSuccess ? 'success' : 'error');
+            element.textContent = message;
+        }
+
+        function showInfo(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'result info';
+            element.textContent = message;
+        }
+
+        async function initiateSSO() {
+            const relayState = document.getElementById('relayState').value;
+            const url = '/saml/login' + (relayState ? `?relayState=${encodeURIComponent(relayState)}` : '');
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult('authResult', `Success: ${data.message}\nRedirect URL: ${data.redirectUrl}`, true);
+                } else {
+                    showResult('authResult', `Error: ${data.message}`, false);
+                }
+            } catch (error) {
+                showResult('authResult', `Error: ${error.message}`, false);
+            }
+        }
+
+        async function processSAMLResponse() {
+            const samlResponse = document.getElementById('samlResponse').value;
+            const relayState = document.getElementById('responseRelayState').value;
+            
+            if (!samlResponse) {
+                showResult('responseResult', 'Error: SAML Response is required', false);
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('SAMLResponse', samlResponse);
+            if (relayState) {
+                formData.append('RelayState', relayState);
+            }
+            
+            try {
+                const response = await fetch('/saml/acs', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    let message = `Success: ${data.message}\n`;
+                    if (data.userName) message += `User Name: ${data.userName}\n`;
+                    if (data.relayState) message += `Relay State: ${data.relayState}\n`;
+                    if (data.attributes) {
+                        message += 'Attributes:\n';
+                        for (const [key, value] of Object.entries(data.attributes)) {
+                            message += `  ${key}: ${value}\n`;
+                        }
+                    }
+                    showResult('responseResult', message, true);
+                } else {
+                    showResult('responseResult', `Error: ${data.message}`, false);
+                }
+            } catch (error) {
+                showResult('responseResult', `Error: ${error.message}`, false);
+            }
+        }
+
+        async function initiateLogout() {
+            const nameId = document.getElementById('nameId').value;
+            const sessionIndex = document.getElementById('sessionIndex').value;
+            const relayState = document.getElementById('logoutRelayState').value;
+            
+            if (!nameId) {
+                showResult('logoutResult', 'Error: Name ID is required', false);
+                return;
+            }
+            
+            const params = new URLSearchParams();
+            params.append('nameId', nameId);
+            if (sessionIndex) params.append('sessionIndex', sessionIndex);
+            if (relayState) params.append('relayState', relayState);
+            
+            try {
+                const response = await fetch(`/saml/logout?${params.toString()}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult('logoutResult', `Success: ${data.message}\nRedirect URL: ${data.redirectUrl}`, true);
+                } else {
+                    showResult('logoutResult', `Error: ${data.message}`, false);
+                }
+            } catch (error) {
+                showResult('logoutResult', `Error: ${error.message}`, false);
+            }
+        }
+
+        async function getMetadata() {
+            try {
+                const response = await fetch('/saml/metadata');
+                const data = await response.json();
+                
+                if (data.success !== false) {
+                    let message = 'SAML Metadata:\n';
+                    for (const [key, value] of Object.entries(data)) {
+                        message += `${key}: ${value}\n`;
+                    }
+                    showInfo('metadataResult', message);
+                } else {
+                    showResult('metadataResult', `Error: ${data.message}`, false);
+                }
+            } catch (error) {
+                showResult('metadataResult', `Error: ${error.message}`, false);
+            }
+        }
+    </script>
+</body>
+</html>
