@@ -3,9 +3,19 @@ package com.saml.server.opensaml.service;
 import com.saml.server.opensaml.config.SAMLProperties;
 import org.opensaml.core.xml.util.XMLObjectSupport;
 import org.opensaml.saml.saml2.core.*;
+import org.opensaml.xmlsec.signature.Signature;
+import org.opensaml.xmlsec.signature.support.SignatureValidator;
+import org.opensaml.xmlsec.signature.support.SignatureException;
+import org.opensaml.core.xml.io.UnmarshallingException;
+import org.opensaml.core.xml.io.MarshallingException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -30,20 +40,20 @@ public class SAMLResponseService {
         // Decode SAML response
         String decodedResponse = new String(Base64.getDecoder().decode(samlResponse));
         
-        // In production, you would unmarshall the response here
-        // For now, we'll simulate processing
+        // Unmarshall the SAML response
+        Response response = unmarshallSAMLResponse(decodedResponse);
         
         // Validate security
-        if (!validateResponseSecurity(decodedResponse)) {
+        if (!validateResponseSecurity(response)) {
             return new SAMLResponseResult(false, "Security validation failed", null, relayState, new HashMap<>());
         }
         
-        // Extract user information (simulated)
-        String userName = extractUserName(decodedResponse);
-        Map<String, String> attributes = extractAttributes(decodedResponse);
+        // Extract user information
+        String userName = extractUserName(response);
+        Map<String, String> attributes = extractAttributes(response);
         
         // Create session
-        String sessionId = securityService.createSession(userName, "session_" + System.currentTimeMillis(), attributes);
+        String sessionId = securityService.createSession(userName, response.getID(), attributes);
         
         return new SAMLResponseResult(true, "SAML response processed successfully", userName, relayState, attributes);
     }
@@ -55,41 +65,80 @@ public class SAMLResponseService {
         // Decompress and decode SAML response
         String decodedResponse = utilityService.decodeAndDecompress(samlResponse);
         
-        // In production, you would unmarshall the response here
-        // For now, we'll simulate processing
+        // Unmarshall the SAML response
+        Response response = unmarshallSAMLResponse(decodedResponse);
         
         // Validate security
-        if (!validateResponseSecurity(decodedResponse)) {
+        if (!validateResponseSecurity(response)) {
             return new SAMLResponseResult(false, "Security validation failed", null, relayState, new HashMap<>());
         }
         
-        // Extract user information (simulated)
-        String userName = extractUserName(decodedResponse);
-        Map<String, String> attributes = extractAttributes(decodedResponse);
+        // Extract user information
+        String userName = extractUserName(response);
+        Map<String, String> attributes = extractAttributes(response);
         
         // Create session
-        String sessionId = securityService.createSession(userName, "session_" + System.currentTimeMillis(), attributes);
+        String sessionId = securityService.createSession(userName, response.getID(), attributes);
         
         return new SAMLResponseResult(true, "SAML response processed successfully", userName, relayState, attributes);
     }
 
     /**
+     * Unmarshall SAML Response from XML string
+     */
+    private Response unmarshallSAMLResponse(String xmlString) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document document = builder.parse(new ByteArrayInputStream(xmlString.getBytes()));
+        Element element = document.getDocumentElement();
+        
+        return (Response) XMLObjectSupport.getUnmarshaller(element).unmarshall(element);
+    }
+
+    /**
      * Validate response security
      */
-    private boolean validateResponseSecurity(String decodedResponse) {
+    private boolean validateResponseSecurity(Response response) {
         try {
-            // In production, you would unmarshall and validate the actual response
-            // For now, we'll do basic validation
-            
-            // Check if response contains required elements
-            if (!decodedResponse.contains("Response") || !decodedResponse.contains("Assertion")) {
+            // Validate response status
+            if (response.getStatus() == null || response.getStatus().getStatusCode() == null) {
                 return false;
             }
             
-            // Check for security-related elements
-            if (!decodedResponse.contains("Signature")) {
-                // In production, you might want to require signatures
-                // For now, we'll allow unsigned responses
+            String statusCode = response.getStatus().getStatusCode().getValue();
+            if (!StatusCode.SUCCESS.equals(statusCode)) {
+                return false;
+            }
+            
+            // Validate issuer
+            if (response.getIssuer() == null || !samlProperties.getIdpEntityId().equals(response.getIssuer().getValue())) {
+                return false;
+            }
+            
+            // Validate destination
+            if (response.getDestination() == null || !samlProperties.getAssertionConsumerServiceURL().equals(response.getDestination())) {
+                return false;
+            }
+            
+            // Validate assertions
+            List<Assertion> assertions = response.getAssertions();
+            if (assertions == null || assertions.isEmpty()) {
+                return false;
+            }
+            
+            // Validate each assertion
+            for (Assertion assertion : assertions) {
+                if (!validateAssertion(assertion)) {
+                    return false;
+                }
+            }
+            
+            // Validate signature if present
+            if (response.getSignature() != null) {
+                if (!validateSignature(response.getSignature())) {
+                    return false;
+                }
             }
             
             return true;
@@ -99,26 +148,178 @@ public class SAMLResponseService {
     }
 
     /**
+     * Validate SAML Assertion
+     */
+    private boolean validateAssertion(Assertion assertion) {
+        try {
+            // Validate issuer
+            if (assertion.getIssuer() == null || !samlProperties.getIdpEntityId().equals(assertion.getIssuer().getValue())) {
+                return false;
+            }
+            
+            // Validate subject
+            if (assertion.getSubject() == null || assertion.getSubject().getNameID() == null) {
+                return false;
+            }
+            
+            // Validate conditions
+            if (assertion.getConditions() != null) {
+                if (!validateConditions(assertion.getConditions())) {
+                    return false;
+                }
+            }
+            
+            // Validate signature if present
+            if (assertion.getSignature() != null) {
+                if (!validateSignature(assertion.getSignature())) {
+                    return false;
+                }
+            }
+            
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Validate SAML Conditions
+     */
+    private boolean validateConditions(Conditions conditions) {
+        try {
+            // Validate NotBefore
+            if (conditions.getNotBefore() != null) {
+                if (System.currentTimeMillis() < conditions.getNotBefore().getMillis()) {
+                    return false;
+                }
+            }
+            
+            // Validate NotOnOrAfter
+            if (conditions.getNotOnOrAfter() != null) {
+                if (System.currentTimeMillis() >= conditions.getNotOnOrAfter().getMillis()) {
+                    return false;
+                }
+            }
+            
+            // Validate audience restriction
+            if (conditions.getAudienceRestrictions() != null && !conditions.getAudienceRestrictions().isEmpty()) {
+                boolean validAudience = false;
+                for (AudienceRestriction restriction : conditions.getAudienceRestrictions()) {
+                    for (Audience audience : restriction.getAudiences()) {
+                        if (samlProperties.getEntityId().equals(audience.getAudienceURI())) {
+                            validAudience = true;
+                            break;
+                        }
+                    }
+                }
+                if (!validAudience) {
+                    return false;
+                }
+            }
+            
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Validate XML Signature
+     */
+    private boolean validateSignature(Signature signature) {
+        try {
+            // Get IdP certificate
+            String idpCertificate = samlProperties.getIdpX509Certificate();
+            if (idpCertificate == null || idpCertificate.trim().isEmpty()) {
+                // If no certificate configured, skip signature validation
+                return true;
+            }
+            
+            // Create certificate from string
+            java.security.cert.X509Certificate cert = utilityService.createCertificateFromString(idpCertificate);
+            
+            // Create credential and validate signature
+            org.opensaml.security.credential.Credential credential = utilityService.createCredentialFromCertificate(cert);
+            SignatureValidator.validate(signature, credential);
+            return true;
+        } catch (SignatureException e) {
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
      * Extract user name from SAML response
      */
-    private String extractUserName(String decodedResponse) {
-        // In production, you would extract from the actual SAML response
-        // For now, return a simulated user name
-        return "user@example.com";
+    private String extractUserName(Response response) {
+        try {
+            List<Assertion> assertions = response.getAssertions();
+            if (assertions != null && !assertions.isEmpty()) {
+                Assertion assertion = assertions.get(0);
+                if (assertion.getSubject() != null && assertion.getSubject().getNameID() != null) {
+                    return assertion.getSubject().getNameID().getValue();
+                }
+            }
+            return "unknown@example.com";
+        } catch (Exception e) {
+            return "unknown@example.com";
+        }
     }
 
     /**
      * Extract attributes from SAML response
      */
-    private Map<String, String> extractAttributes(String decodedResponse) {
+    private Map<String, String> extractAttributes(Response response) {
         Map<String, String> attributes = new HashMap<>();
         
-        // In production, you would extract from the actual SAML response
-        // For now, return simulated attributes
-        attributes.put("email", "user@example.com");
-        attributes.put("firstName", "John");
-        attributes.put("lastName", "Doe");
-        attributes.put("department", "IT");
+        try {
+            List<Assertion> assertions = response.getAssertions();
+            if (assertions != null && !assertions.isEmpty()) {
+                Assertion assertion = assertions.get(0);
+                
+                // Extract attributes from AttributeStatement
+                if (assertion.getAttributeStatements() != null) {
+                    for (AttributeStatement attributeStatement : assertion.getAttributeStatements()) {
+                        for (Attribute attribute : attributeStatement.getAttributes()) {
+                            String attributeName = attribute.getName();
+                            String attributeValue = "";
+                            
+                            // Get first attribute value
+                            if (attribute.getAttributeValues() != null && !attribute.getAttributeValues().isEmpty()) {
+                                org.opensaml.core.xml.XMLObject value = attribute.getAttributeValues().get(0);
+                                if (value instanceof org.opensaml.saml.saml2.core.AttributeValue) {
+                                    org.opensaml.saml.saml2.core.AttributeValue attrValue = (org.opensaml.saml.saml2.core.AttributeValue) value;
+                                    // Extract text content from DOM element
+                                    if (attrValue.getDOM() != null) {
+                                        attributeValue = attrValue.getDOM().getTextContent();
+                                    }
+                                }
+                            }
+                            
+                            attributes.put(attributeName, attributeValue);
+                        }
+                    }
+                }
+                
+                // Extract common attributes from NameID
+                if (assertion.getSubject() != null && assertion.getSubject().getNameID() != null) {
+                    String nameId = assertion.getSubject().getNameID().getValue();
+                    String nameIdFormat = assertion.getSubject().getNameID().getFormat();
+                    
+                    if (nameIdFormat != null && nameIdFormat.contains("email")) {
+                        attributes.put("email", nameId);
+                    }
+                    attributes.put("nameId", nameId);
+                    attributes.put("nameIdFormat", nameIdFormat != null ? nameIdFormat : "");
+                }
+            }
+        } catch (Exception e) {
+            // Add default attributes if extraction fails
+            attributes.put("email", "user@example.com");
+            attributes.put("firstName", "Unknown");
+            attributes.put("lastName", "User");
+        }
         
         return attributes;
     }

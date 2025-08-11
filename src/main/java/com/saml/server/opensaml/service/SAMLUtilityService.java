@@ -10,10 +10,15 @@ import org.opensaml.xmlsec.signature.support.SignatureException;
 import org.opensaml.xmlsec.signature.support.SignatureValidator;
 import org.springframework.stereotype.Service;
 import org.w3c.dom.Element;
+import org.opensaml.security.credential.Credential;
+import org.opensaml.security.credential.CredentialSupport;
+import org.opensaml.security.x509.BasicX509Credential;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.util.Base64;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
@@ -74,6 +79,28 @@ public class SAMLUtilityService {
         } catch (SignatureException e) {
             return false;
         }
+    }
+
+    /**
+     * Create certificate from PEM string
+     */
+    public X509Certificate createCertificateFromString(String certificateString) throws Exception {
+        // Remove header and footer if present
+        String cert = certificateString
+            .replace("-----BEGIN CERTIFICATE-----", "")
+            .replace("-----END CERTIFICATE-----", "")
+            .replaceAll("\\s", "");
+        
+        byte[] certBytes = Base64.getDecoder().decode(cert);
+        CertificateFactory factory = CertificateFactory.getInstance("X.509");
+        return (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(certBytes));
+    }
+
+    /**
+     * Create credential from certificate
+     */
+    public Credential createCredentialFromCertificate(X509Certificate certificate) {
+        return new BasicX509Credential(certificate);
     }
 
     /**
