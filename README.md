@@ -1,59 +1,151 @@
-# OpenSAML 3 Custom SAML Framework
+# SAML Framework with OpenSAML 3
 
-A comprehensive SAML framework built with OpenSAML 3, Spring Boot 1.4.2, and Java 8. This framework provides a complete SAML Service Provider (SP) implementation with support for authentication, logout, and metadata generation.
+A production-ready SAML 2.0 Service Provider framework built with Spring Boot 1.4.2 and OpenSAML 3.4.6, designed for enterprise-grade Single Sign-On (SSO) integration.
 
-## Features
+## 🚀 Features
 
-- **SAML 2.0 Support**: Full implementation of SAML 2.0 protocol
-- **Service Provider (SP)**: Acts as a SAML Service Provider
-- **Authentication**: SP-initiated Single Sign-On (SSO)
-- **Logout**: Single Logout (SLO) support
-- **Multiple Bindings**: HTTP-POST and HTTP-Redirect binding support
-- **Signature Support**: XML signature creation and validation
-- **Web Interface**: Built-in test interface for SAML operations
-- **REST API**: RESTful endpoints for SAML operations
-- **Configuration**: Externalized configuration via properties file
+### Core SAML Functionality
+- ✅ **SAML 2.0 Protocol Support** - Full implementation of SAML 2.0 specification
+- ✅ **SP-Initiated SSO** - Service Provider initiated Single Sign-On
+- ✅ **IdP-Initiated SSO** - Identity Provider initiated Single Sign-On
+- ✅ **Single Logout (SLO)** - Complete logout across all applications
+- ✅ **HTTP-POST & HTTP-Redirect Bindings** - Support for both SAML bindings
+- ✅ **SAML Metadata** - Dynamic metadata generation
 
-## Prerequisites
+### Production Security
+- 🔐 **Replay Attack Protection** - Prevents SAML response replay attacks
+- 🔐 **Request ID Validation** - Ensures unique request IDs
+- 🔐 **Response Time Validation** - Validates SAML response timestamps
+- 🔐 **Session Management** - Secure session handling with timeout
+- 🔐 **Certificate Management** - X.509 certificate support
+- 🔐 **Security Headers** - Comprehensive HTTP security headers
 
-- Java 8
+### Monitoring & Operations
+- 📊 **Health Checks** - Application health monitoring
+- 📊 **Metrics** - SAML operation metrics
+- 📊 **Logging** - Structured logging with rotation
+- 📊 **Actuator Endpoints** - Spring Boot Actuator integration
+
+## 🛠️ Technology Stack
+
+- **Java 8** - Runtime environment
+- **Spring Boot 1.4.2** - Application framework
+- **OpenSAML 3.4.6** - SAML implementation
+- **Maven** - Build tool
+- **Thymeleaf** - Template engine
+- **BouncyCastle** - Cryptographic operations
+
+## 📋 Prerequisites
+
+- Java 8 or higher
 - Maven 3.6+
-- Spring Boot 1.4.2
+- OpenSSL (for certificate generation)
+- Access to an Identity Provider (IdP)
 
-## Dependencies
+## 🚀 Quick Start
 
-The framework uses the following key dependencies:
-
-- **OpenSAML 3.4.6**: Core SAML library
-- **Spring Boot 1.4.2**: Application framework
-- **Spring Security**: Security framework
-- **Thymeleaf**: Template engine for web interface
-- **Apache Commons**: Utility libraries
-
-## Project Structure
-
-```
-src/main/java/com/saml/server/opensaml/
-├── config/
-│   ├── OpenSAMLConfig.java          # OpenSAML initialization
-│   └── SAMLProperties.java          # Configuration properties
-├── service/
-│   ├── SAMLUtilityService.java      # Utility functions
-│   ├── SAMLAuthRequestService.java  # Authentication requests
-│   ├── SAMLResponseService.java     # Response processing
-│   └── SAMLLogoutService.java       # Logout handling
-├── controller/
-│   ├── SAMLController.java          # REST API endpoints
-│   └── WebController.java           # Web interface
-└── OpensamlApplication.java         # Main application class
+### 1. Clone the Repository
+```bash
+git clone https://github.com/Somesh-Kumar-Yadav/saml-withopensaml.git
+cd saml-withopensaml
 ```
 
-## Configuration
+### 2. Generate Certificates
+```bash
+chmod +x scripts/generate-certificates.sh
+./scripts/generate-certificates.sh
+```
 
-### 1. Update application.properties
+### 3. Configure Your IdP
+Update `src/main/resources/application.properties` with your Identity Provider details:
+```properties
+# Your IdP Configuration
+saml.idp.entity-id=http://your-idp-entity-id
+saml.idp.single-sign-on-service-url=http://your-idp-sso-url
+saml.idp.single-logout-service-url=http://your-idp-slo-url
+saml.idp.x509-certificate=-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----
+```
 
-Configure your SAML settings in `src/main/resources/application.properties`:
+### 4. Build and Run
+```bash
+./mvnw clean package
+java -jar target/opensaml-0.0.1-SNAPSHOT.jar
+```
 
+### 5. Access the Application
+- **Application**: http://localhost:8080
+- **SAML Metadata**: http://localhost:8080/saml/metadata
+- **Health Check**: http://localhost:8080/actuator/health
+
+## 📡 API Endpoints
+
+### SAML Endpoints
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/saml/metadata` | GET | SAML metadata for IdP configuration |
+| `/saml/login` | GET | Initiate SAML SSO |
+| `/saml/acs` | POST/GET | Handle SAML response |
+| `/saml/logout` | GET | Initiate SAML logout |
+| `/saml/slo` | POST | Handle logout request |
+| `/saml/slo-response` | POST | Handle logout response |
+
+### Monitoring Endpoints
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/actuator/health` | GET | Application health status |
+| `/actuator/metrics` | GET | Application metrics |
+| `/actuator/prometheus` | GET | Prometheus metrics |
+
+## 🔐 Security Features
+
+### SAML Security
+- **Replay Attack Protection**: Prevents duplicate SAML responses
+- **Request ID Validation**: Ensures unique request identifiers
+- **Response Time Validation**: Validates SAML response timestamps (5-minute window)
+- **Session Management**: 30-minute session timeout with cleanup
+- **Certificate Validation**: X.509 certificate support
+
+### HTTP Security Headers
+```http
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+Content-Security-Policy: default-src 'self'
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: geolocation=(), microphone=(), camera=()
+```
+
+## 📁 Project Structure
+
+```
+saml-withopensaml/
+├── src/main/java/com/saml/server/opensaml/
+│   ├── config/
+│   │   ├── OpenSAMLConfig.java          # OpenSAML initialization
+│   │   ├── ProductionSecurityFilter.java # Security headers
+│   │   └── SAMLProperties.java          # Configuration properties
+│   ├── controller/
+│   │   ├── SAMLController.java          # SAML REST endpoints
+│   │   └── WebController.java           # Web interface
+│   ├── service/
+│   │   ├── SAMLAuthRequestService.java  # AuthnRequest creation
+│   │   ├── SAMLResponseService.java     # Response processing
+│   │   ├── SAMLLogoutService.java       # Logout handling
+│   │   ├── SAMLSecurityService.java     # Security validation
+│   │   └── SAMLUtilityService.java      # Utility functions
+│   └── OpensamlApplication.java         # Main application
+├── src/main/resources/
+│   ├── application.properties           # Configuration
+│   └── templates/index.html             # Web interface
+├── scripts/
+│   └── generate-certificates.sh         # Certificate generation
+├── PRODUCTION_DEPLOYMENT.md             # Deployment guide
+└── README.md                            # This file
+```
+
+## 🔧 Configuration
+
+### SAML Configuration
 ```properties
 # Service Provider Configuration
 saml.entity-id=http://localhost:8080/saml/metadata
@@ -64,175 +156,111 @@ saml.single-logout-service-url=http://localhost:8080/saml/slo
 saml.idp.entity-id=http://your-idp-entity-id
 saml.idp.single-sign-on-service-url=http://your-idp-sso-url
 saml.idp.single-logout-service-url=http://your-idp-slo-url
-saml.idp.x509-certificate=your-idp-certificate-here
 
-# Service Provider Certificate and Key
-saml.sp.x509-certificate=your-sp-certificate-here
-saml.sp.private-key=your-sp-private-key-here
+# Security Settings
+saml.security.replay-attack-protection=true
+saml.security.max-response-age-minutes=5
+saml.security.session-timeout-minutes=30
+saml.security.require-signatures=true
 ```
 
-### 2. Generate Certificates
+### Production Settings
+```properties
+# Server Configuration
+server.port=8080
+server.tomcat.max-threads=200
+server.servlet.session.timeout=30m
 
-You'll need to generate X.509 certificates for your Service Provider:
-
-```bash
-# Generate private key
-openssl genrsa -out sp-private-key.pem 2048
-
-# Generate certificate
-openssl req -new -x509 -key sp-private-key.pem -out sp-certificate.pem -days 365
+# Logging
+logging.level.com.saml.server.opensaml=INFO
+logging.file.name=logs/opensaml.log
+logging.file.max-size=100MB
 ```
 
-## Running the Application
+## 🚀 Production Deployment
 
-### 1. Build the project
+For production deployment, see the comprehensive guide in [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md).
 
+### Key Production Steps:
+1. Generate production certificates (not self-signed)
+2. Configure HTTPS/TLS
+3. Set up firewall rules
+4. Configure monitoring and alerting
+5. Test thoroughly in staging environment
+
+## 🧪 Testing
+
+### Manual Testing
+1. Access http://localhost:8080
+2. Use the web interface to test SAML flows
+3. Check logs for detailed information
+
+### API Testing
 ```bash
-./mvnw clean install
-```
+# Get SAML metadata
+curl http://localhost:8080/saml/metadata
 
-### 2. Run the application
-
-```bash
-./mvnw spring-boot:run
-```
-
-### 3. Access the web interface
-
-Open your browser and navigate to: `http://localhost:8080`
-
-## API Endpoints
-
-### Authentication
-
-- **GET** `/saml/login` - Initiate SAML SSO
-- **POST** `/saml/acs` - Handle SAML Response (POST binding)
-- **GET** `/saml/acs` - Handle SAML Response (Redirect binding)
-
-### Logout
-
-- **GET** `/saml/logout` - Initiate SAML Logout
-- **POST** `/saml/slo` - Handle Logout Request
-- **POST** `/saml/slo-response` - Handle Logout Response
-
-### Metadata
-
-- **GET** `/saml/metadata` - Get SAML metadata
-
-## Usage Examples
-
-### 1. Initiate SAML SSO
-
-```bash
+# Initiate SSO
 curl "http://localhost:8080/saml/login?relayState=test123"
+
+# Check health
+curl http://localhost:8080/actuator/health
 ```
 
-### 2. Process SAML Response
-
-```bash
-curl -X POST "http://localhost:8080/saml/acs" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "SAMLResponse=base64-encoded-response&RelayState=test123"
-```
-
-### 3. Initiate Logout
-
-```bash
-curl "http://localhost:8080/saml/logout?nameId=user@example.com&sessionIndex=session123"
-```
-
-### 4. Get Metadata
-
-```bash
-curl "http://localhost:8080/saml/metadata"
-```
-
-## Web Interface
-
-The application includes a web-based test interface that allows you to:
-
-1. **Initiate SAML SSO**: Start the authentication process
-2. **Process SAML Responses**: Test response processing with sample data
-3. **Test Logout**: Initiate and test logout functionality
-4. **View Metadata**: Display SAML metadata information
-
-## Integration with Identity Providers
-
-### Common IdP Configurations
-
-#### 1. Okta
-
-```properties
-saml.idp.entity-id=http://www.okta.com/exk123456
-saml.idp.single-sign-on-service-url=https://your-domain.okta.com/app/your-app/exk123456/sso/saml
-saml.idp.single-logout-service-url=https://your-domain.okta.com/app/your-app/exk123456/slo/saml
-```
-
-#### 2. Azure AD
-
-```properties
-saml.idp.entity-id=https://sts.windows.net/your-tenant-id/
-saml.idp.single-sign-on-service-url=https://login.microsoftonline.com/your-tenant-id/saml2
-saml.idp.single-logout-service-url=https://login.microsoftonline.com/your-tenant-id/saml2
-```
-
-#### 3. ADFS
-
-```properties
-saml.idp.entity-id=http://your-adfs-server/adfs/services/trust
-saml.idp.single-sign-on-service-url=https://your-adfs-server/adfs/ls
-saml.idp.single-logout-service-url=https://your-adfs-server/adfs/ls
-```
-
-## Security Considerations
-
-1. **HTTPS**: Always use HTTPS in production
-2. **Certificate Management**: Properly manage and rotate certificates
-3. **Signature Validation**: Always validate SAML signatures
-4. **Session Management**: Implement proper session handling
-5. **Error Handling**: Implement comprehensive error handling
-6. **Logging**: Monitor and log SAML operations
-
-## Troubleshooting
+## 🔍 Troubleshooting
 
 ### Common Issues
 
-1. **OpenSAML Initialization Error**: Ensure OpenSAML is properly initialized
-2. **Certificate Issues**: Verify certificate format and validity
-3. **URL Mismatches**: Check that all URLs match between SP and IdP
-4. **Signature Validation**: Ensure certificates are properly configured
+1. **Certificate Issues**
+   - Verify certificate format (PEM/DER)
+   - Check certificate expiration
+   - Ensure proper key usage extensions
+
+2. **SAML Response Validation**
+   - Check response time validity
+   - Verify issuer matches configuration
+   - Validate signature (if required)
+
+3. **Session Issues**
+   - Check session timeout settings
+   - Verify cookie settings
+   - Monitor session cleanup
 
 ### Debug Mode
-
-Enable debug logging by adding to `application.properties`:
-
+Enable debug logging for troubleshooting:
 ```properties
 logging.level.com.saml.server.opensaml=DEBUG
 logging.level.org.opensaml=DEBUG
 ```
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## 🆘 Support
 
 For issues and questions:
+1. Check the [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) guide
+2. Review application logs
+3. Test with SAML tracer browser extension
+4. Open an issue on GitHub
 
-1. Check the troubleshooting section
-2. Review the OpenSAML documentation
-3. Create an issue in the repository
-
-## References
+## 🔗 Related Links
 
 - [SAML 2.0 Specification](http://docs.oasis-open.org/security/saml/Post2.0/sstc-saml-tech-overview-2.0.html)
 - [OpenSAML Documentation](https://shibboleth.atlassian.net/wiki/spaces/OSAML/overview)
 - [Spring Boot Documentation](https://spring.io/projects/spring-boot)
+
+---
+
+**⭐ Star this repository if you find it helpful!**
+
+**⚠️ Important**: This is a production-ready SAML framework. Always test thoroughly in a staging environment before deploying to production.
