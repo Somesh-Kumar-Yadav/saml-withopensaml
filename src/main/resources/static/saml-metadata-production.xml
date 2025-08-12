@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+                     xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+                     entityID="https://your-domain.com/saml/metadata"
+                     validUntil="2026-12-31T23:59:59Z">
+    
+    <!-- Service Provider Organization Information -->
+    <md:Organization>
+        <md:OrganizationName xml:lang="en">Your Organization Name</md:OrganizationName>
+        <md:OrganizationDisplayName xml:lang="en">Your Application SP</md:OrganizationDisplayName>
+        <md:OrganizationURL xml:lang="en">https://your-domain.com</md:OrganizationURL>
+    </md:Organization>
+    
+    <!-- Contact Information -->
+    <md:ContactPerson contactType="technical">
+        <md:GivenName>Technical</md:GivenName>
+        <md:SurName>Support</md:SurName>
+        <md:EmailAddress>tech-support@your-domain.com</md:EmailAddress>
+    </md:ContactPerson>
+    
+    <md:ContactPerson contactType="administrative">
+        <md:GivenName>Administrative</md:GivenName>
+        <md:SurName>Contact</md:SurName>
+        <md:EmailAddress>admin@your-domain.com</md:EmailAddress>
+    </md:ContactPerson>
+    
+    <!-- Service Provider Single Sign-On Service -->
+    <md:SPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"
+                         AuthnRequestsSigned="true"
+                         WantAssertionsSigned="true"
+                         WantAssertionsEncrypted="false">
+        
+        <!-- Key Descriptor for Signing (REQUIRED for production) -->
+        <md:KeyDescriptor use="signing">
+            <ds:KeyInfo>
+                <ds:X509Data>
+                    <ds:X509Certificate>
+                        <!-- Replace with your actual SP certificate -->
+                        YOUR_SP_SIGNING_CERTIFICATE_HERE
+                    </ds:X509Certificate>
+                </ds:X509Data>
+            </ds:KeyInfo>
+        </md:KeyDescriptor>
+        
+        <!-- Key Descriptor for Encryption (if you want encrypted assertions) -->
+        <!--
+        <md:KeyDescriptor use="encryption">
+            <ds:KeyInfo>
+                <ds:X509Data>
+                    <ds:X509Certificate>
+                        YOUR_SP_ENCRYPTION_CERTIFICATE_HERE
+                    </ds:X509Certificate>
+                </ds:X509Data>
+            </ds:KeyInfo>
+        </md:KeyDescriptor>
+        -->
+        
+        <!-- Single Logout Service - HTTP-POST Binding -->
+        <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+                                Location="https://your-domain.com/saml/slo"
+                                ResponseLocation="https://your-domain.com/saml/slo-response"/>
+        
+        <!-- Single Logout Service - HTTP-Redirect Binding -->
+        <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+                                Location="https://your-domain.com/saml/slo"
+                                ResponseLocation="https://your-domain.com/saml/slo-response"/>
+        
+        <!-- Assertion Consumer Service - HTTP-POST Binding (Primary) -->
+        <md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+                                     Location="https://your-domain.com/saml/acs"
+                                     index="0"
+                                     isDefault="true"/>
+        
+        <!-- Assertion Consumer Service - HTTP-Redirect Binding (Fallback) -->
+        <md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+                                     Location="https://your-domain.com/saml/acs"
+                                     index="1"
+                                     isDefault="false"/>
+        
+        <!-- Name ID Formats (in order of preference) -->
+        <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>
+        <md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:persistent</md:NameIDFormat>
+        <md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:transient</md:NameIDFormat>
+        <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified</md:NameIDFormat>
+        
+        <!-- Requested Attributes -->
+        <md:AttributeConsumingService index="0" isDefault="true">
+            <md:ServiceName xml:lang="en">Your Application</md:ServiceName>
+            <md:ServiceDescription xml:lang="en">Main application service for user authentication</md:ServiceDescription>
+            
+            <!-- Required Attributes -->
+            <md:RequestedAttribute Name="email" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic" isRequired="true"/>
+            <md:RequestedAttribute Name="firstName" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic" isRequired="true"/>
+            <md:RequestedAttribute Name="lastName" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic" isRequired="true"/>
+            
+            <!-- Optional Attributes -->
+            <md:RequestedAttribute Name="employeeId" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic" isRequired="false"/>
+            <md:RequestedAttribute Name="department" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic" isRequired="false"/>
+            <md:RequestedAttribute Name="title" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic" isRequired="false"/>
+            <md:RequestedAttribute Name="groups" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic" isRequired="false"/>
+            <md:RequestedAttribute Name="manager" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic" isRequired="false"/>
+            <md:RequestedAttribute Name="phoneNumber" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic" isRequired="false"/>
+        </md:AttributeConsumingService>
+        
+    </md:SPSSODescriptor>
+    
+</md:EntityDescriptor>
